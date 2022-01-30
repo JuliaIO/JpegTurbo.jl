@@ -1,8 +1,34 @@
 using JpegTurbo
 using JpegTurbo.LibJpeg
 using Test
+using Aqua
+using Documenter
+using TestImages
+using ImageQualityIndexes
+using ImageMagick
+using ImageCore
+
+tmpdir = tempdir()
+function decode_encode(img; kwargs...)
+    tmpfile = joinpath(tmpdir, "tmp.jpg")
+    buf = @inferred jpeg_encode(img; kwargs...)
+    write(tmpfile, buf)
+    # TODO(johnnychen94): load back with `JpegTurbo.decode`
+    return ImageMagick.load(tmpfile)
+end
 
 @testset "JpegTurbo.jl" begin
+    @testset "Project meta quality checks" begin
+        Aqua.test_all(JpegTurbo;
+            ambiguities=false,
+            project_extras=true,
+            deps_compat=true,
+            stale_deps=true,
+            project_toml_formatting=true
+        )
+        doctest(JpegTurbo, manual = false)
+    end
+
     @testset "config" begin
         @test_nowarn JpegTurbo.versioninfo()
 
@@ -14,5 +40,11 @@ using Test
         @test LibJpeg.BITS_IN_JSAMPLE == 8
         @test LibJpeg.MAXJSAMPLE == 255
         @test LibJpeg.CENTERJSAMPLE == 128
+
+        # ensure colorspace extensions are supported
+        @test LibJpeg.JCS_EXTENSIONS == 1
+        @test LibJpeg.JCS_ALPHA_EXTENSIONS == 1
     end
+
+    include("tst_encode.jl")
 end
