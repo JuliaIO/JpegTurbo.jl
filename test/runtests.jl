@@ -4,6 +4,8 @@ using Test
 
 @testset "JpegTurbo.jl" begin
     @testset "config" begin
+        @test_nowarn JpegTurbo.versioninfo()
+
         # ensure we're using SIMD-built version for performance
         @test LibJpeg.WITH_SIMD == 1
 
