@@ -47,4 +47,10 @@ end
     end
 
     include("tst_encode.jl")
+    if Threads.nthreads() > 1
+        @info "Multi-threads test: enabled"
+        include("tst_multithreads.jl")
+    else
+        @info "Multi-threads test: skipped"
+    end
 end
