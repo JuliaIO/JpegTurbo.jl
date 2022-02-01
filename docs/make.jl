@@ -11,6 +11,7 @@ makedocs(;
     format=format,
     pages=[
         "Home" => "index.md",
+        "Reference" => "reference.md",
     ],
 )
 
