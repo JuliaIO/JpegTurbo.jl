@@ -8,6 +8,9 @@ using ImageQualityIndexes
 using ImageMagick
 using ImageCore
 
+# ensure TestImages artifacts are downloaded before running documenter test
+testimage("cameraman")
+
 tmpdir = tempdir()
 function decode_encode(img; kwargs...)
     tmpfile = joinpath(tmpdir, "tmp.jpg")
@@ -17,15 +20,17 @@ function decode_encode(img; kwargs...)
 end
 
 @testset "JpegTurbo.jl" begin
-    @testset "Project meta quality checks" begin
-        Aqua.test_all(JpegTurbo;
-            ambiguities=false,
-            project_extras=true,
-            deps_compat=true,
-            stale_deps=true,
-            project_toml_formatting=true
-        )
-        doctest(JpegTurbo, manual = false)
+    if !Sys.iswindows() # DEBUG
+        @testset "Project meta quality checks" begin
+            Aqua.test_all(JpegTurbo;
+                ambiguities=false,
+                project_extras=true,
+                deps_compat=true,
+                stale_deps=true,
+                project_toml_formatting=true
+            )
+            doctest(JpegTurbo, manual = false)
+        end
     end
 
     @testset "config" begin
