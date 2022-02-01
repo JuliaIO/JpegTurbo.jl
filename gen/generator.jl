@@ -21,9 +21,14 @@ function generate_prologue(options)
     end
 
     outfile = options["general"]["prologue_file_path"]
-    write(outfile, """
-    const LIBJPEG_TURBO_VERSION = v"$(get_jpegturbo_version())"
-    """)
+    open(outfile, "w") do io
+        println(io, "const LIBJPEG_TURBO_VERSION = v\"$(get_jpegturbo_version())\"")
+        println(io)
+
+        # https://github.com/libjpeg-turbo/libjpeg-turbo/blob/14ce28a92d45e4e22b643bd845ba6c543ebcd388/win/jconfig.h.in#L14-L18
+        println(io, "const boolean = @static Sys.iswindows() ? Cuchar : Cint")
+        println(io)
+    end
 end
 
 options = load_options(joinpath(@__DIR__, "generator.toml"))

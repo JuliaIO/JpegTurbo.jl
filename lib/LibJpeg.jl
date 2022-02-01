@@ -7,8 +7,9 @@ using CEnum
 
 const LIBJPEG_TURBO_VERSION = v"2.1.0"
 
+const boolean = @static Sys.iswindows() ? Cuchar : Cint
 
-const boolean = Cint
+
 
 struct var"##Ctag#285"
     data::NTuple{80, UInt8}
