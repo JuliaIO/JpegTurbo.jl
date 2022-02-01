@@ -1,5 +1,6 @@
 module JpegTurbo
 
-# Write your package code here.
+include("../lib/LibJpeg.jl")
+using .LibJpeg
 
 end
