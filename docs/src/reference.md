@@ -6,6 +6,7 @@ CurrentModule = JpegTurbo
 
 ```@docs
 jpeg_encode
+jpeg_decode
 ```
 
 ## Utilities

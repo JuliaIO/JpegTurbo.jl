@@ -13,8 +13,7 @@ function decode_encode(img; kwargs...)
     tmpfile = joinpath(tmpdir, "tmp.jpg")
     buf = @inferred jpeg_encode(img; kwargs...)
     write(tmpfile, buf)
-    # TODO(johnnychen94): load back with `JpegTurbo.decode`
-    return ImageMagick.load(tmpfile)
+    return jpeg_decode(tmpfile)
 end
 
 @testset "JpegTurbo.jl" begin
@@ -47,6 +46,7 @@ end
     end
 
     include("tst_encode.jl")
+    include("tst_decode.jl")
     if Threads.nthreads() > 1
         @info "Multi-threads test: enabled"
         include("tst_multithreads.jl")

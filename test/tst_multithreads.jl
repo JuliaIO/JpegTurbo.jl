@@ -11,4 +11,18 @@
         end
         @test all(out .== Ref(ref))
     end
+
+    @testset "jpeg_decode" begin
+        out = [similar(img) for _ in 1:Threads.nthreads()]
+        tmpdir = tempdir()
+
+        for i in 1:Threads.nthreads()
+            jpeg_encode(joinpath(tmpdir, "$i.jpg"), img)
+        end
+        ref = jpeg_decode(joinpath(tmpdir, "1.jpg"))
+        Threads.@threads for i in 1:Threads.nthreads()
+            out[i] = jpeg_decode(joinpath(tmpdir, "$i.jpg"))
+        end
+        @test all(out .== Ref(ref))
+    end
 end

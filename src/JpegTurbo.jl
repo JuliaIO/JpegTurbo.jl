@@ -8,7 +8,8 @@ include("libjpeg_utils.jl")
 
 include("common.jl")
 include("encode.jl")
+include("decode.jl")
 
-export jpeg_encode
+export jpeg_encode, jpeg_decode
 
 end
