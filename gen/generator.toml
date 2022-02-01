@@ -17,6 +17,7 @@ auto_mutability_includelist = [
 output_ignorelist = [
     "LIBJPEG_TURBO_VERSION",
     "boolean",
+    "jpeg_CreateDecompress",
 ]
 
 [codegen]
