@@ -11,8 +11,10 @@ in memory as return value.
 
 - `transpose::Bool`: whether we need to permute the image's width and height dimension
   before encoding. The default value is `false`.
-- `quality::Int`: Constructs JPEG quantization tables appropriate for the indicated
-  quality setting. The quality value is expressed on the 0..100 scale recommended by IJG.
+- `quality::Int`: Constructs JPEG quantization tables appropriate for the indicated quality
+  setting. The quality value is expressed on the 0..100 scale recommended by IJG. The
+  default value is `92`. Pass `quality=nothing` to let libjpeg-turbo dynamicly guess a
+  value.
 
 !!! info "Custom compression parameters"
     JPEG has a large number of compression parameters that determine how the image is
@@ -28,10 +30,10 @@ julia> using JpegTurbo, TestImages
 julia> img = testimage("cameraman");
 
 julia> jpeg_encode("out.jpg", img) # write to file
-28210
+51396
 
 julia> buf = jpeg_encode(img); length(buf) # directly write to memory
-28210
+51396
 ```
 
 # References
@@ -60,7 +62,8 @@ jpeg_encode(io::IO, img; kwargs...) = write(io, jpeg_encode(img; kwargs...))
 function _encode(
     img::Matrix{<:Colorant};
     colorspace::Union{Nothing,Type} = nothing,
-    quality::Union{Nothing,Int} = nothing,
+    # ImageMagick: "the default is to use the estimated quality of your input image if it can be determined, otherwise 92."
+    quality::Union{Nothing,Int} = 92,
     arith_code::Union{Nothing,Bool} = nothing,
     optimize_coding::Union{Nothing,Bool} = nothing,
     smoothing_factor::Union{Nothing,Int} = nothing,
