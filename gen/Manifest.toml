@@ -19,9 +19,9 @@ version = "0.4.1"
 
 [[deps.Clang]]
 deps = ["CEnum", "Clang_jll", "Downloads", "Pkg", "TOML"]
-git-tree-sha1 = "b6f01747f2c5bbb73e3a0401b492ed5e53d43f81"
+git-tree-sha1 = "d56ad13cbc205fdcd9846448450cb57367e21b21"
 uuid = "40e3b903-d033-50b4-a0cc-940c62c95e31"
-version = "0.15.6"
+version = "0.15.7"
 
 [[deps.Clang_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg", "Zlib_jll", "libLLVM_jll"]
