@@ -54,11 +54,10 @@ function jpeg_decode(
     @assert infile.ptr != C_NULL
     out_CT, jpeg_cls = _jpeg_out_color_space(CT)
 
-    local cinfo, out
+    cinfo_ref = Ref(LibJpeg.jpeg_decompress_struct())
+    jerr = Ref{LibJpeg.jpeg_error_mgr}()
     try
-        cinfo = LibJpeg.jpeg_decompress_struct()
-        cinfo_ref = Ref(cinfo)
-        jerr = Ref{LibJpeg.jpeg_error_mgr}()
+        cinfo = cinfo_ref[]
         cinfo.err = LibJpeg.jpeg_std_error(jerr)
         LibJpeg.jpeg_create_decompress(cinfo_ref)
         LibJpeg.jpeg_stdio_src(cinfo_ref, infile)
@@ -79,39 +78,42 @@ function jpeg_decode(
         @assert out_ndims == length(out_CT) "Suspicous output color space: $cinfo.out_color_space"
 
         out = Matrix{out_CT}(undef, out_size)
-        _jpeg_decode!(out, cinfo)
-    finally
-        LibJpeg.jpeg_destroy_decompress(Ref(cinfo))
-        ccall(:fclose, Cint, (Ptr{Libc.FILE},), infile)
-    end
+        _jpeg_decode!(out, cinfo_ref)
 
-    if out_CT <: CT
-        return transpose ? out : permutedims(out, (2, 1))
-    else
-        return transpose ? CT.(out) : CT.(PermutedDimsArray(out, (2, 1)))
+        if out_CT <: CT
+            return transpose ? out : permutedims(out, (2, 1))
+        else
+            return transpose ? CT.(out) : CT.(PermutedDimsArray(out, (2, 1)))
+        end
+    finally
+        LibJpeg.jpeg_destroy_decompress(cinfo_ref)
+        ccall(:fclose, Cint, (Ptr{Libc.FILE},), infile)
     end
 end
 function jpeg_decode(filename::AbstractString; kwargs...)
     return jpeg_decode(_default_out_color_space(filename), filename; kwargs...)
 end
 
-function _jpeg_decode!(out::Matrix{<:Colorant}, cinfo::LibJpeg.jpeg_decompress_struct)
-    cinfo_ref = Ref(cinfo)
-
+function _jpeg_decode!(out::Matrix{<:Colorant}, cinfo_ref::Ref{LibJpeg.jpeg_decompress_struct})
     row_stride = size(out, 1) * length(eltype(out))
     buf = Vector{UInt8}(undef, row_stride)
+    buf_ref = Ref(pointer(buf))
     out_uint8 = reinterpret(UInt8, out)
 
+    cinfo = cinfo_ref[]
     LibJpeg.jpeg_start_decompress(cinfo_ref)
     while cinfo.output_scanline < cinfo.output_height
         # TODO(johnnychen94): try if we can directly write to `out` without using `buf`
-        GC.@preserve buf LibJpeg.jpeg_read_scanlines(cinfo_ref, Ref(pointer(buf)), 1)
+        GC.@preserve buf LibJpeg.jpeg_read_scanlines(cinfo_ref, buf_ref, 1)
         copyto!(out_uint8, (cinfo.output_scanline-1) * row_stride + 1, buf, 1, row_stride)
     end
     LibJpeg.jpeg_finish_decompress(cinfo_ref)
 
     return out
 end
+
+
+_jpeg_decode!(out::Matrix{<:Colorant}, cinfo::LibJpeg.jpeg_decompress_struct) = _jpeg_decode!(out, Ref(cinfo))
 
 # libjpeg-turbo only supports ratio M/8 with M from 1 to 16
 const _allowed_scale_ratios = ntuple(i->i//8, 16)
@@ -120,19 +122,17 @@ _cal_scale_ratio(r::Real) = _allowed_scale_ratios[findmin(x->abs(x-r), _allowed_
 function _default_out_color_space(filename::AbstractString)
     infile = ccall(:fopen, Libc.FILE, (Cstring, Cstring), filename, "rb")
     @assert infile.ptr != C_NULL
-    local cinfo
+    cinfo_ref = Ref(LibJpeg.jpeg_decompress_struct())
+    jerr = Ref{LibJpeg.jpeg_error_mgr}()
     try
-        cinfo = LibJpeg.jpeg_decompress_struct()
-        cinfo_ref = Ref(cinfo)
-        jerr = Ref{LibJpeg.jpeg_error_mgr}()
-        cinfo.err = LibJpeg.jpeg_std_error(jerr)
+        cinfo_ref[].err = LibJpeg.jpeg_std_error(jerr)
         LibJpeg.jpeg_create_decompress(cinfo_ref)
         LibJpeg.jpeg_stdio_src(cinfo_ref, infile)
         LibJpeg.jpeg_read_header(cinfo_ref, true)
         LibJpeg.jpeg_calc_output_dimensions(cinfo_ref)
-        return jpeg_color_space(cinfo.out_color_space)
+        return jpeg_color_space(cinfo_ref[].out_color_space)
     finally
-        LibJpeg.jpeg_destroy_decompress(Ref(cinfo))
+        LibJpeg.jpeg_destroy_decompress(cinfo_ref)
         ccall(:fclose, Cint, (Ptr{Libc.FILE},), infile)
     end
 end
