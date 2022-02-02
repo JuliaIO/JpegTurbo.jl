@@ -112,6 +112,7 @@ function _jpeg_decode!(out::Matrix{<:Colorant}, cinfo_ref::Ref{LibJpeg.jpeg_deco
     return out
 end
 
+
 _jpeg_decode!(out::Matrix{<:Colorant}, cinfo::LibJpeg.jpeg_decompress_struct) = _jpeg_decode!(out, Ref(cinfo))
 
 # libjpeg-turbo only supports ratio M/8 with M from 1 to 16
