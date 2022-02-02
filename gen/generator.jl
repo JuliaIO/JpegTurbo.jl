@@ -35,12 +35,7 @@ options = load_options(joinpath(@__DIR__, "generator.toml"))
 
 args = get_default_args()
 push!(args, "-I$include_dir")
-
-# include <stdio.h> so that `size_t` and `FILE` are defined
-system_dirs = map(x->x[9:end], filter(x->startswith(x, "-isystem"), args))
-usrinclude_dir = system_dirs[findfirst(endswith("/usr/include"), system_dirs)]
-header_stdio = joinpath(usrinclude_dir, "stdio.h")
-push!(args, "-include$header_stdio")
+push!(args, "--include=stdio.h")
 
 generate_prologue(options)
 
@@ -51,47 +46,5 @@ headers = [
 ]
 
 ctx = create_context(headers, args, options)
-build!(ctx, BUILDSTAGE_NO_PRINTING)
 
-rewrite_j_decompress_ptr!(::String) = nothing
-function rewrite_j_decompress_ptr!(e::Expr)
-    # We would expect `const j_decompress_ptr = Ptr{jpeg_decompress_struct}`.
-    # However, since Julia doesn't support forward declaration, thus Clang (v0.15.5)
-    # generates a helper struct `__JL_jpeg_decompress_struct` with associated
-    # `const j_decompress_ptr = Ptr{__JL_jpeg_decompress_struct}`, a lot of
-    # related ccall methods needs a rewrite patch
-    # `j_decompress_ptr => Ptr{jpeg_decompress_struct}` to make things work.
-
-    if e.head == :block
-        return foreach(rewrite_j_decompress_ptr!, e.args)
-    end
-    if e.head == :function
-        return rewrite_j_decompress_ptr!(e.args[2])
-    end
-
-    if e.head == :call && e.args[1] == :ccall
-        @assert e.head == :call
-        @assert e.args[1] == :ccall
-        if any(isequal(:j_decompress_ptr), e.args[4].args)
-            rtypes = Expr(:tuple, map(e.args[4].args) do e
-                e == :j_decompress_ptr && return :(Ptr{jpeg_decompress_struct})
-                return e
-            end...)
-            old = copy(e)
-            e.args[4] = rtypes
-            @info "ccall rewrite for j_decompress_ptr" old new=e
-        end
-    end
-    return
-end
-
-function rewrite!(dag::ExprDAG)
-    for node in get_nodes(dag)
-        for expr in get_exprs(node)
-            rewrite_j_decompress_ptr!(expr)
-        end
-    end
-end
-
-rewrite!(ctx.dag)
-build!(ctx, BUILDSTAGE_PRINTING_ONLY)
+build!(ctx)
