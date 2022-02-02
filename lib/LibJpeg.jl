@@ -362,6 +362,8 @@ end
 
 Base.unsafe_convert(::Type{Ptr{__JL_jpeg_decompress_struct}}, x::Ref) = Base.unsafe_convert(Ptr{__JL_jpeg_decompress_struct}, Base.unsafe_convert(Ptr{jpeg_decompress_struct}, x))
 
+Base.unsafe_convert(::Type{Ptr{__JL_jpeg_decompress_struct}}, x::Ptr) = Ptr{__JL_jpeg_decompress_struct}(x)
+
 const j_decompress_ptr = Ptr{__JL_jpeg_decompress_struct}
 
 function jpeg_CreateDecompress(cinfo, version, structsize)
@@ -408,6 +410,8 @@ function Base.setproperty!(x::Ptr{__JL_jpeg_marker_struct}, f::Symbol, v)
 end
 
 Base.unsafe_convert(::Type{Ptr{__JL_jpeg_marker_struct}}, x::Ref) = Base.unsafe_convert(Ptr{__JL_jpeg_marker_struct}, Base.unsafe_convert(Ptr{jpeg_marker_struct}, x))
+
+Base.unsafe_convert(::Type{Ptr{__JL_jpeg_marker_struct}}, x::Ptr) = Ptr{__JL_jpeg_marker_struct}(x)
 
 const jpeg_saved_marker_ptr = Ptr{__JL_jpeg_marker_struct}
 
