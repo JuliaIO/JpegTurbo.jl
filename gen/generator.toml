@@ -8,6 +8,8 @@ prologue_file_path = "./prologue.jl"
 epilogue_file_path = "./epilogue.jl"
 is_local_header_only = true
 
+use_deterministic_symbol = true
+
 auto_mutability = true
 auto_mutability_includelist = [
     "jpeg_compress_struct",
@@ -16,8 +18,7 @@ auto_mutability_includelist = [
 
 output_ignorelist = [
     "LIBJPEG_TURBO_VERSION",
-    "boolean",
-    "jpeg_CreateDecompress",
+    "boolean"
 ]
 
 [codegen]

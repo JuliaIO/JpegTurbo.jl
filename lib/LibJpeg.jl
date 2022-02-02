@@ -11,24 +11,24 @@ const boolean = @static Sys.iswindows() ? Cuchar : Cint
 
 
 
-struct var"##Ctag#285"
+struct __JL_Ctag_12
     data::NTuple{80, UInt8}
 end
 
-function Base.getproperty(x::Ptr{var"##Ctag#285"}, f::Symbol)
+function Base.getproperty(x::Ptr{__JL_Ctag_12}, f::Symbol)
     f === :i && return Ptr{NTuple{8, Cint}}(x + 0)
     f === :s && return Ptr{NTuple{80, Cchar}}(x + 0)
     return getfield(x, f)
 end
 
-function Base.getproperty(x::var"##Ctag#285", f::Symbol)
-    r = Ref{var"##Ctag#285"}(x)
-    ptr = Base.unsafe_convert(Ptr{var"##Ctag#285"}, r)
+function Base.getproperty(x::__JL_Ctag_12, f::Symbol)
+    r = Ref{__JL_Ctag_12}(x)
+    ptr = Base.unsafe_convert(Ptr{__JL_Ctag_12}, r)
     fptr = getproperty(ptr, f)
     GC.@preserve r unsafe_load(fptr)
 end
 
-function Base.setproperty!(x::Ptr{var"##Ctag#285"}, f::Symbol, v)
+function Base.setproperty!(x::Ptr{__JL_Ctag_12}, f::Symbol, v)
     unsafe_store!(getproperty(x, f), v)
 end
 
@@ -43,7 +43,7 @@ function Base.getproperty(x::Ptr{jpeg_error_mgr}, f::Symbol)
     f === :format_message && return Ptr{Ptr{Cvoid}}(x + 24)
     f === :reset_error_mgr && return Ptr{Ptr{Cvoid}}(x + 32)
     f === :msg_code && return Ptr{Cint}(x + 40)
-    f === :msg_parm && return Ptr{var"##Ctag#285"}(x + 44)
+    f === :msg_parm && return Ptr{__JL_Ctag_12}(x + 44)
     f === :trace_level && return Ptr{Cint}(x + 124)
     f === :num_warnings && return Ptr{Clong}(x + 128)
     f === :jpeg_message_table && return Ptr{Ptr{Ptr{Cchar}}}(x + 136)
@@ -360,7 +360,13 @@ function Base.setproperty!(x::Ptr{__JL_jpeg_decompress_struct}, f::Symbol, v)
     setproperty!(Ptr{jpeg_decompress_struct}(x), f, v)
 end
 
+Base.unsafe_convert(::Type{Ptr{__JL_jpeg_decompress_struct}}, x::Ref) = Base.unsafe_convert(Ptr{__JL_jpeg_decompress_struct}, Base.unsafe_convert(Ptr{jpeg_decompress_struct}, x))
+
 const j_decompress_ptr = Ptr{__JL_jpeg_decompress_struct}
+
+function jpeg_CreateDecompress(cinfo, version, structsize)
+    ccall((:jpeg_CreateDecompress, libjpeg), Cvoid, (j_decompress_ptr, Cint, Csize_t), cinfo, version, structsize)
+end
 
 const JSAMPLE = Cuchar
 
@@ -400,6 +406,8 @@ end
 function Base.setproperty!(x::Ptr{__JL_jpeg_marker_struct}, f::Symbol, v)
     setproperty!(Ptr{jpeg_marker_struct}(x), f, v)
 end
+
+Base.unsafe_convert(::Type{Ptr{__JL_jpeg_marker_struct}}, x::Ref) = Base.unsafe_convert(Ptr{__JL_jpeg_marker_struct}, Base.unsafe_convert(Ptr{jpeg_marker_struct}, x))
 
 const jpeg_saved_marker_ptr = Ptr{__JL_jpeg_marker_struct}
 
@@ -670,7 +678,7 @@ function jpeg_destroy_compress(cinfo)
 end
 
 function jpeg_destroy_decompress(cinfo)
-    ccall((:jpeg_destroy_decompress, libjpeg), Cvoid, (Ptr{jpeg_decompress_struct},), cinfo)
+    ccall((:jpeg_destroy_decompress, libjpeg), Cvoid, (j_decompress_ptr,), cinfo)
 end
 
 function jpeg_stdio_dest(cinfo, outfile)
@@ -678,7 +686,7 @@ function jpeg_stdio_dest(cinfo, outfile)
 end
 
 function jpeg_stdio_src(cinfo, infile)
-    ccall((:jpeg_stdio_src, libjpeg), Cvoid, (Ptr{jpeg_decompress_struct}, Ptr{Libc.FILE}), cinfo, infile)
+    ccall((:jpeg_stdio_src, libjpeg), Cvoid, (j_decompress_ptr, Ptr{Libc.FILE}), cinfo, infile)
 end
 
 function jpeg_mem_dest(cinfo, outbuffer, outsize)
@@ -686,7 +694,7 @@ function jpeg_mem_dest(cinfo, outbuffer, outsize)
 end
 
 function jpeg_mem_src(cinfo, inbuffer, insize)
-    ccall((:jpeg_mem_src, libjpeg), Cvoid, (Ptr{jpeg_decompress_struct}, Ptr{Cuchar}, Culong), cinfo, inbuffer, insize)
+    ccall((:jpeg_mem_src, libjpeg), Cvoid, (j_decompress_ptr, Ptr{Cuchar}, Culong), cinfo, inbuffer, insize)
 end
 
 function jpeg_set_defaults(cinfo)
@@ -770,71 +778,71 @@ function jpeg_write_icc_profile(cinfo, icc_data_ptr, icc_data_len)
 end
 
 function jpeg_read_header(cinfo, require_image)
-    ccall((:jpeg_read_header, libjpeg), Cint, (Ptr{jpeg_decompress_struct}, boolean), cinfo, require_image)
+    ccall((:jpeg_read_header, libjpeg), Cint, (j_decompress_ptr, boolean), cinfo, require_image)
 end
 
 function jpeg_start_decompress(cinfo)
-    ccall((:jpeg_start_decompress, libjpeg), boolean, (Ptr{jpeg_decompress_struct},), cinfo)
+    ccall((:jpeg_start_decompress, libjpeg), boolean, (j_decompress_ptr,), cinfo)
 end
 
 function jpeg_read_scanlines(cinfo, scanlines, max_lines)
-    ccall((:jpeg_read_scanlines, libjpeg), JDIMENSION, (Ptr{jpeg_decompress_struct}, JSAMPARRAY, JDIMENSION), cinfo, scanlines, max_lines)
+    ccall((:jpeg_read_scanlines, libjpeg), JDIMENSION, (j_decompress_ptr, JSAMPARRAY, JDIMENSION), cinfo, scanlines, max_lines)
 end
 
 function jpeg_skip_scanlines(cinfo, num_lines)
-    ccall((:jpeg_skip_scanlines, libjpeg), JDIMENSION, (Ptr{jpeg_decompress_struct}, JDIMENSION), cinfo, num_lines)
+    ccall((:jpeg_skip_scanlines, libjpeg), JDIMENSION, (j_decompress_ptr, JDIMENSION), cinfo, num_lines)
 end
 
 function jpeg_crop_scanline(cinfo, xoffset, width)
-    ccall((:jpeg_crop_scanline, libjpeg), Cvoid, (Ptr{jpeg_decompress_struct}, Ptr{JDIMENSION}, Ptr{JDIMENSION}), cinfo, xoffset, width)
+    ccall((:jpeg_crop_scanline, libjpeg), Cvoid, (j_decompress_ptr, Ptr{JDIMENSION}, Ptr{JDIMENSION}), cinfo, xoffset, width)
 end
 
 function jpeg_finish_decompress(cinfo)
-    ccall((:jpeg_finish_decompress, libjpeg), boolean, (Ptr{jpeg_decompress_struct},), cinfo)
+    ccall((:jpeg_finish_decompress, libjpeg), boolean, (j_decompress_ptr,), cinfo)
 end
 
 function jpeg_read_raw_data(cinfo, data, max_lines)
-    ccall((:jpeg_read_raw_data, libjpeg), JDIMENSION, (Ptr{jpeg_decompress_struct}, JSAMPIMAGE, JDIMENSION), cinfo, data, max_lines)
+    ccall((:jpeg_read_raw_data, libjpeg), JDIMENSION, (j_decompress_ptr, JSAMPIMAGE, JDIMENSION), cinfo, data, max_lines)
 end
 
 function jpeg_has_multiple_scans(cinfo)
-    ccall((:jpeg_has_multiple_scans, libjpeg), boolean, (Ptr{jpeg_decompress_struct},), cinfo)
+    ccall((:jpeg_has_multiple_scans, libjpeg), boolean, (j_decompress_ptr,), cinfo)
 end
 
 function jpeg_start_output(cinfo, scan_number)
-    ccall((:jpeg_start_output, libjpeg), boolean, (Ptr{jpeg_decompress_struct}, Cint), cinfo, scan_number)
+    ccall((:jpeg_start_output, libjpeg), boolean, (j_decompress_ptr, Cint), cinfo, scan_number)
 end
 
 function jpeg_finish_output(cinfo)
-    ccall((:jpeg_finish_output, libjpeg), boolean, (Ptr{jpeg_decompress_struct},), cinfo)
+    ccall((:jpeg_finish_output, libjpeg), boolean, (j_decompress_ptr,), cinfo)
 end
 
 function jpeg_input_complete(cinfo)
-    ccall((:jpeg_input_complete, libjpeg), boolean, (Ptr{jpeg_decompress_struct},), cinfo)
+    ccall((:jpeg_input_complete, libjpeg), boolean, (j_decompress_ptr,), cinfo)
 end
 
 function jpeg_new_colormap(cinfo)
-    ccall((:jpeg_new_colormap, libjpeg), Cvoid, (Ptr{jpeg_decompress_struct},), cinfo)
+    ccall((:jpeg_new_colormap, libjpeg), Cvoid, (j_decompress_ptr,), cinfo)
 end
 
 function jpeg_consume_input(cinfo)
-    ccall((:jpeg_consume_input, libjpeg), Cint, (Ptr{jpeg_decompress_struct},), cinfo)
+    ccall((:jpeg_consume_input, libjpeg), Cint, (j_decompress_ptr,), cinfo)
 end
 
 function jpeg_calc_output_dimensions(cinfo)
-    ccall((:jpeg_calc_output_dimensions, libjpeg), Cvoid, (Ptr{jpeg_decompress_struct},), cinfo)
+    ccall((:jpeg_calc_output_dimensions, libjpeg), Cvoid, (j_decompress_ptr,), cinfo)
 end
 
 function jpeg_save_markers(cinfo, marker_code, length_limit)
-    ccall((:jpeg_save_markers, libjpeg), Cvoid, (Ptr{jpeg_decompress_struct}, Cint, Cuint), cinfo, marker_code, length_limit)
+    ccall((:jpeg_save_markers, libjpeg), Cvoid, (j_decompress_ptr, Cint, Cuint), cinfo, marker_code, length_limit)
 end
 
 function jpeg_set_marker_processor(cinfo, marker_code, routine)
-    ccall((:jpeg_set_marker_processor, libjpeg), Cvoid, (Ptr{jpeg_decompress_struct}, Cint, jpeg_marker_parser_method), cinfo, marker_code, routine)
+    ccall((:jpeg_set_marker_processor, libjpeg), Cvoid, (j_decompress_ptr, Cint, jpeg_marker_parser_method), cinfo, marker_code, routine)
 end
 
 function jpeg_read_coefficients(cinfo)
-    ccall((:jpeg_read_coefficients, libjpeg), Ptr{jvirt_barray_ptr}, (Ptr{jpeg_decompress_struct},), cinfo)
+    ccall((:jpeg_read_coefficients, libjpeg), Ptr{jvirt_barray_ptr}, (j_decompress_ptr,), cinfo)
 end
 
 function jpeg_write_coefficients(cinfo, coef_arrays)
@@ -842,7 +850,7 @@ function jpeg_write_coefficients(cinfo, coef_arrays)
 end
 
 function jpeg_copy_critical_parameters(srcinfo, dstinfo)
-    ccall((:jpeg_copy_critical_parameters, libjpeg), Cvoid, (Ptr{jpeg_decompress_struct}, j_compress_ptr), srcinfo, dstinfo)
+    ccall((:jpeg_copy_critical_parameters, libjpeg), Cvoid, (j_decompress_ptr, j_compress_ptr), srcinfo, dstinfo)
 end
 
 function jpeg_abort_compress(cinfo)
@@ -850,7 +858,7 @@ function jpeg_abort_compress(cinfo)
 end
 
 function jpeg_abort_decompress(cinfo)
-    ccall((:jpeg_abort_decompress, libjpeg), Cvoid, (Ptr{jpeg_decompress_struct},), cinfo)
+    ccall((:jpeg_abort_decompress, libjpeg), Cvoid, (j_decompress_ptr,), cinfo)
 end
 
 function jpeg_abort(cinfo)
@@ -862,11 +870,11 @@ function jpeg_destroy(cinfo)
 end
 
 function jpeg_resync_to_restart(cinfo, desired)
-    ccall((:jpeg_resync_to_restart, libjpeg), boolean, (Ptr{jpeg_decompress_struct}, Cint), cinfo, desired)
+    ccall((:jpeg_resync_to_restart, libjpeg), boolean, (j_decompress_ptr, Cint), cinfo, desired)
 end
 
 function jpeg_read_icc_profile(cinfo, icc_data_ptr, icc_data_len)
-    ccall((:jpeg_read_icc_profile, libjpeg), boolean, (Ptr{jpeg_decompress_struct}, Ptr{Ptr{JOCTET}}, Ptr{Cuint}), cinfo, icc_data_ptr, icc_data_len)
+    ccall((:jpeg_read_icc_profile, libjpeg), boolean, (j_decompress_ptr, Ptr{Ptr{JOCTET}}, Ptr{Cuint}), cinfo, icc_data_ptr, icc_data_len)
 end
 
 @cenum TJSAMP::UInt32 begin
@@ -1281,13 +1289,6 @@ jpeg_create_compress(cinfo) =
     jpeg_CreateCompress(cinfo, JPEG_LIB_VERSION, sizeof(jpeg_compress_struct))
 jpeg_create_decompress(cinfo) =
     jpeg_CreateDecompress(cinfo, JPEG_LIB_VERSION, sizeof(jpeg_decompress_struct))
-
-######################################################################################################
-
-# rewrite patch: j_decompress_ptr => Ptr{jpeg_decompress_struct}
-function jpeg_CreateDecompress(cinfo, version, structsize)
-    ccall((:jpeg_CreateDecompress, libjpeg), Cvoid, (Ptr{jpeg_decompress_struct}, Cint, Csize_t), cinfo, version, structsize)
-end
 
 
 end # module
