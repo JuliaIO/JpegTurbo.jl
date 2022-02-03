@@ -1,6 +1,5 @@
 jpeg_components(::AbstractArray{T}) where T = jpeg_components(T)
 jpeg_components(::Type{CT}) where CT<:Colorant = length(CT)
-jpeg_components(::Type{T}) where T<:Number = 1
 
 jpeg_color_space(::AbstractArray{T}) where T = jpeg_color_space(T)
 jpeg_color_space(::Type{CT}) where CT<:Gray = LibJpeg.JCS_GRAYSCALE
