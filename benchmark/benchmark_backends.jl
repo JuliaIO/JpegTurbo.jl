@@ -19,6 +19,17 @@ const cv = pyimport("cv2")
 const skimageio = pyimport("skimage.io")
 const skimage = pyimport("skimage")
 
+@pyinclude joinpath(@__DIR__, "pyhelpers.py")
+
+function print_cv_version(io)
+    cv_jpeg_ver = match(r"\d+\.\d+\.\d+-\d+", filter(split(cv.getBuildInformation(), "\n")) do line
+        occursin("build-libjpeg-turbo", line)
+    end[1]).match
+
+    println(io, "OpenCV version: $(cv.__version__)")
+    println(io, "OpenCV libjpeg-turbo version: $(cv_jpeg_ver)")
+end
+
 img_list = Any[
     # Gray
     "moonsurface" => testimage("moonsurface"),
@@ -43,8 +54,17 @@ open("report.md", "w") do out_io
     println(out_io)
 
     println(out_io, "```")
+    println(out_io, "Julia versioninfo:")
     versioninfo(out_io)
-    println(out_io, "OpenCV version: $(cv.__version__)")
+    println(out_io)
+
+    println(out_io, "JpegTurbo.jl versioninfo:")
+    JpegTurbo.versioninfo(out_io)
+    println(out_io)
+
+    print_cv_version(out_io)
+    println(out_io)
+
     println(out_io, "Scikit-image version: $(skimage.__version__)")
     println(out_io, "```")
     println(out_io)
@@ -85,14 +105,14 @@ open("report.md", "w") do out_io
             println(io, row_msg)
         end
 
-        # OpenCV
-        @info "OpenCV (PyCall): $name"
+        # OpenCV (Python)
+        @info "OpenCV (Python): $name"
         save("tmp.png", img)
         flag = eltype(img) <: Gray ? cv.IMREAD_GRAYSCALE : cv.IMREAD_COLOR
+        t_encode, t_decode = py"belapsed_cv2"(tmpname, flag, number=100)
         img_cv = cv.imread("tmp.png", flag)
-        t_encode = 1000 * @belapsed cv.imwrite(tmpname, $img_cv) seconds=2
+        cv.imwrite(tmpname, img_cv)
         sz = filesize(tmpname) / 1024
-        t_decode = 1000 * @belapsed cv.imread(tmpname, $flag) seconds=2
         img_cv_new = cv.imread(tmpname, flag)
         if eltype(img) <: RGB
             img_cv_new = collect(reinterpret(reshape, RGB{N0f8}, permutedims(img_cv_new, (3, 1, 2))))
@@ -102,16 +122,16 @@ open("report.md", "w") do out_io
             img_cv = collect(reinterpret(reshape, Gray{N0f8}, img_cv))
         end
         psnr = assess_psnr(img_cv, img_cv_new)
-        row_msg = @sprintf "| OpenCV (PyCall) | %.2f | %.2f | %.2f | %.4f |" t_encode t_decode sz psnr
+        row_msg = @sprintf "| OpenCV (Python) | %.2f | %.2f | %.2f | %.4f |" t_encode t_decode sz psnr
         println(io, row_msg)
 
         # Scikit-image
-        @info "Scikit-image (PyCall): $name"
+        @info "Scikit-image: $name"
         save("tmp.png", img)
+        t_encode, t_decode = py"belapsed_skimage"(tmpname, number=100)
         img_ski = skimageio.imread("tmp.png")
-        t_encode = 1000 * @belapsed skimageio.imsave(tmpname, $img_ski) seconds=2
+        skimageio.imsave(tmpname, img_ski)
         sz = filesize(tmpname) / 1024
-        t_decode = 1000 * @belapsed skimageio.imread(tmpname) seconds=2
         img_ski_new = skimageio.imread(tmpname)
         if eltype(img) <: RGB
             img_ski_new = collect(reinterpret(reshape, RGB{N0f8}, permutedims(img_ski_new, (3, 1, 2))))
@@ -121,7 +141,7 @@ open("report.md", "w") do out_io
             img_ski = collect(reinterpret(reshape, Gray{N0f8}, img_ski))
         end
         psnr = assess_psnr(img_ski, img_ski_new)
-        row_msg = @sprintf "| Scikit-image (PyCall) | %.2f | %.2f | %.2f | %.4f |" t_encode t_decode sz psnr
+        row_msg = @sprintf "| Scikit-image | %.2f | %.2f | %.2f | %.4f |" t_encode t_decode sz psnr
         println(io, row_msg)
 
         println(io)
