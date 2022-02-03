@@ -1,7 +1,10 @@
 """
     jpeg_decode([T,] filename::AbstractString; kwargs...) -> Matrix{T}
+    jpeg_decode([T,] io::IO; kwargs...) -> Matrix{T}
+    jpeg_decode([T,] data::Vector{UInt8}; kwargs...) -> Matrix{T}
 
-Decode the JPEG image from given I/O stream as colorant matrix.
+Decode the JPEG image as colorant matrix. The source data can be either a filename, an IO
+, or an in-memory bytes sequence.
 
 # parameters
 
@@ -47,11 +50,9 @@ filename = testimage("earth", download_only=true)
 """
 function jpeg_decode(
         ::Type{CT},
-        filename::AbstractString;
+        data::Vector{UInt8};
         transpose=false,
         scale_ratio=1) where CT<:Colorant
-    infile = ccall(:fopen, Libc.FILE, (Cstring, Cstring), filename, "rb")
-    @assert infile.ptr != C_NULL
     out_CT, jpeg_cls = _jpeg_out_color_space(CT)
 
     cinfo_ref = Ref(LibJpeg.jpeg_decompress_struct())
@@ -60,7 +61,7 @@ function jpeg_decode(
         cinfo = cinfo_ref[]
         cinfo.err = LibJpeg.jpeg_std_error(jerr)
         LibJpeg.jpeg_create_decompress(cinfo_ref)
-        LibJpeg.jpeg_stdio_src(cinfo_ref, infile)
+        LibJpeg.jpeg_mem_src(cinfo_ref, data, length(data))
         LibJpeg.jpeg_read_header(cinfo_ref, true)
 
         # set decompression parameters, if given
@@ -87,12 +88,20 @@ function jpeg_decode(
         end
     finally
         LibJpeg.jpeg_destroy_decompress(cinfo_ref)
-        ccall(:fclose, Cint, (Ptr{Libc.FILE},), infile)
     end
 end
-function jpeg_decode(filename::AbstractString; kwargs...)
-    return jpeg_decode(_default_out_color_space(filename), filename; kwargs...)
+jpeg_decode(data; kwargs...) = jpeg_decode(_default_out_color_space(data), data; kwargs...)
+
+# TODO(johnnychen94): support Progressive JPEG
+# TODO(johnnychen94): support partial decoding
+function jpeg_decode(::Type{CT}, filename::AbstractString; kwargs...) where CT<:Colorant
+    open(filename, "r") do io
+        jpeg_decode(CT, io; kwargs...)
+    end
 end
+
+jpeg_decode(io::IO; kwargs...) = jpeg_decode(read(io); kwargs...)
+jpeg_decode(::Type{CT}, io::IO; kwargs...) where CT<:Colorant = jpeg_decode(CT, read(io); kwargs...)
 
 function _jpeg_decode!(out::Matrix{<:Colorant}, cinfo_ref::Ref{LibJpeg.jpeg_decompress_struct})
     row_stride = size(out, 1) * length(eltype(out))
@@ -134,6 +143,21 @@ function _default_out_color_space(filename::AbstractString)
     finally
         LibJpeg.jpeg_destroy_decompress(cinfo_ref)
         ccall(:fclose, Cint, (Ptr{Libc.FILE},), infile)
+    end
+end
+
+function _default_out_color_space(data::Vector{UInt8})
+    cinfo_ref = Ref(LibJpeg.jpeg_decompress_struct())
+    try
+        jerr = Ref{LibJpeg.jpeg_error_mgr}()
+        cinfo_ref[].err = LibJpeg.jpeg_std_error(jerr)
+        LibJpeg.jpeg_create_decompress(cinfo_ref)
+        LibJpeg.jpeg_mem_src(cinfo_ref, data, length(data))
+        LibJpeg.jpeg_read_header(cinfo_ref, true)
+        LibJpeg.jpeg_calc_output_dimensions(cinfo_ref)
+        return jpeg_color_space(cinfo_ref[].out_color_space)
+    finally
+        LibJpeg.jpeg_destroy_decompress(cinfo_ref)
     end
 end
 
