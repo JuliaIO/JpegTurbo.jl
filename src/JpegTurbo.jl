@@ -1,6 +1,8 @@
 module JpegTurbo
 
 using ImageCore
+using TOML
+const project_info = TOML.parsefile(joinpath(@__DIR__, "..", "Project.toml"))
 
 include("../lib/LibJpeg.jl")
 using .LibJpeg
