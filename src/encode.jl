@@ -40,9 +40,10 @@ julia> buf = jpeg_encode(img); length(buf) # directly write to memory
 
 - [1] [libjpeg API Documentation (libjpeg.txt)](https://raw.githubusercontent.com/libjpeg-turbo/libjpeg-turbo/main/libjpeg.txt)
 """
-function jpeg_encode(img::AbstractMatrix; transpose=false, kwargs...)
+function jpeg_encode(img::AbstractMatrix{T}; transpose=false, kwargs...) where T<:Union{Real, Colorant}
     # quantilized into 8bit sequences first
-    AT = Array{n0f8(eltype(img)), ndims(img)}
+    CT = T <: Colorant ? n0f8(eltype(img)) : Gray{N0f8}
+    AT = Array{CT, ndims(img)}
     # jpegturbo is a C library and assumes row-major memory order, thus `collect` the data into
     # contiguous memeory layout already makes a transpose.
     img = transpose ? convert(AT, img) : convert(AT, PermutedDimsArray(img, (2, 1)))

@@ -14,6 +14,10 @@ img_rgb = testimage("lighthouse")
         @test data == decode_encode(img, transpose=false)
         @test decode_encode(img, transpose=true) == decode_encode(img', transpose=false)
     end
+
+    # numerical array is treated as Gray image
+    img = Gray.(img_rgb)
+    @test jpeg_encode(Float32.(img)) == jpeg_encode(img)
 end
 
 # keyword checks
