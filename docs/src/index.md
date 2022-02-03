@@ -21,6 +21,8 @@ jpeg_encode(img; kwargs...) -> Vector{UInt8}
 
 ```julia
 jpeg_decode([T,] filename::AbstractString; kwargs...) -> Matrix{T}
+jpeg_decode([T,] io::IO; kwargs...) -> Matrix{T}
+jpeg_decode([T,] data::Vector{UInt8}; kwargs...) -> Matrix{T}
 ```
 
 ## Feature set
@@ -28,7 +30,7 @@ jpeg_decode([T,] filename::AbstractString; kwargs...) -> Matrix{T}
 | function             | filename | IOStream | in-memory buffer     | pre-allocated output | multi-threads |
 | -------------------- | -------- | -------- | -------------------- | -------------------  | ------------- |
 | `jpeg_encode`        | x        | x        | x                    |                      | x             |
-| `jpeg_decode`        | x        |          |                      |                      | x             |
+| `jpeg_decode`        | x        | x        | x                    |                      | x             |
 | `ImageMagick.save`   | x        | x        | x                    |                      | x             |
 | `ImageMagick.load`   | x        | x        | x                    |                      | x             |
 | `QuartzImageIO.save` | x        | x        | x (`FileIO.Stream`)  |                      | x             |

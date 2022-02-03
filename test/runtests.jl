@@ -5,19 +5,12 @@ using Aqua
 using Documenter
 using TestImages
 using ImageQualityIndexes
-using ImageMagick
 using ImageCore
 
 # ensure TestImages artifacts are downloaded before running documenter test
 testimage("cameraman")
 
-tmpdir = tempdir()
-function decode_encode(img; kwargs...)
-    tmpfile = joinpath(tmpdir, "tmp.jpg")
-    buf = @inferred jpeg_encode(img; kwargs...)
-    write(tmpfile, buf)
-    return jpeg_decode(tmpfile)
-end
+const tmpdir = tempdir()
 
 @testset "JpegTurbo.jl" begin
     if !Sys.iswindows() # DEBUG
