@@ -51,4 +51,7 @@ const tmpdir = tempdir()
     else
         @info "Multi-threads test: skipped"
     end
+
+    # TODO(johnnychen94): enable after JpegTurbo is registered in FileIO
+    # include("fileio.jl")
 end
