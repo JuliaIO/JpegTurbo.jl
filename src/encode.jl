@@ -44,6 +44,7 @@ function jpeg_encode(img::AbstractMatrix{T}; transpose=false, kwargs...) where T
     # quantilized into 8bit sequences first
     CT = T <: Colorant ? n0f8(eltype(img)) : Gray{N0f8}
     AT = Array{CT, ndims(img)}
+    clamp01nan!(img)
     # jpegturbo is a C library and assumes row-major memory order, thus `collect` the data into
     # contiguous memeory layout already makes a transpose.
     img = transpose ? convert(AT, img) : convert(AT, PermutedDimsArray(img, (2, 1)))

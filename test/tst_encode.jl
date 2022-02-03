@@ -18,6 +18,11 @@ img_rgb = testimage("lighthouse")
     # numerical array is treated as Gray image
     img = Gray.(img_rgb)
     @test jpeg_encode(Float32.(img)) == jpeg_encode(img)
+
+    # out-of-range values are mapped into [0, 1]
+    img_or = 1.5 .* img
+    img_or[1] = Gray(NaN)
+    @test jpeg_encode(img_or) == jpeg_encode(Float64.(img_or)) == jpeg_encode(clamp01nan!(img_or))
 end
 
 # keyword checks
