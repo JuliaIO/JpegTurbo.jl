@@ -55,4 +55,9 @@
         data = jpeg_decode(jpeg_encode(img_rgb; transpose=true); transpose=true)
         @test assess_psnr(data, img_rgb) > 33.95
     end
+
+    @testset "integrity check" begin
+        @test_throws ArgumentError jpeg_decode(UInt8[])
+        @test_throws ArgumentError jpeg_decode(img_rgb_bytes[1:600])
+    end
 end

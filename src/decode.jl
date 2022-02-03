@@ -4,7 +4,7 @@
     jpeg_decode([T,] data::Vector{UInt8}; kwargs...) -> Matrix{T}
 
 Decode the JPEG image as colorant matrix. The source data can be either a filename, an IO
-, or an in-memory bytes sequence.
+, or an in-memory byte sequence.
 
 # parameters
 
@@ -53,6 +53,7 @@ function jpeg_decode(
         data::Vector{UInt8};
         transpose=false,
         scale_ratio=1) where CT<:Colorant
+    _jpeg_check_bytes(data)
     out_CT, jpeg_cls = _jpeg_out_color_space(CT)
 
     cinfo_ref = Ref(LibJpeg.jpeg_decompress_struct())
@@ -129,6 +130,7 @@ const _allowed_scale_ratios = ntuple(i->i//8, 16)
 _cal_scale_ratio(r::Real) = _allowed_scale_ratios[findmin(x->abs(x-r), _allowed_scale_ratios)[2]]
 
 function _default_out_color_space(filename::AbstractString)
+    _jpeg_check_bytes(filename)
     infile = ccall(:fopen, Libc.FILE, (Cstring, Cstring), filename, "rb")
     @assert infile.ptr != C_NULL
     cinfo_ref = Ref(LibJpeg.jpeg_decompress_struct())
@@ -147,6 +149,7 @@ function _default_out_color_space(filename::AbstractString)
 end
 
 function _default_out_color_space(data::Vector{UInt8})
+    _jpeg_check_bytes(data)
     cinfo_ref = Ref(LibJpeg.jpeg_decompress_struct())
     try
         jerr = Ref{LibJpeg.jpeg_error_mgr}()
@@ -168,4 +171,26 @@ function _jpeg_out_color_space(::Type{CT}) where CT
         @debug "Unsupported libjpeg-turbo color space, fallback to RGB{N0f8}" e
         RGB{N0f8}, jpeg_color_space(RGB{N0f8})
     end
+end
+
+# provides some basic integrity check
+# TODO(johnnychen94): redirect libjpeg-turbo error to julia
+_jpeg_check_bytes(filename::AbstractString) = open(_jpeg_check_bytes, filename, "r")
+function _jpeg_check_bytes(io::IO)
+    seekend(io)
+    nbytes = position(io)
+    nbytes > 623 || throw(ArgumentError("Invalid number of bytes."))
+
+    buf = UInt8[]
+    seekstart(io)
+    readbytes!(io, buf, 623)
+    seek(io, nbytes-2)
+    append!(buf, read(io, 2))
+    return _jpeg_check_bytes(buf)
+end
+function _jpeg_check_bytes(data::Vector{UInt8})
+    length(data) > 623 || throw(ArgumentError("Invalid number of bytes."))
+    data[1:2] == [0xff, 0xd8] || throw(ArgumentError("Invalid JPEG byte sequence."))
+    data[end-1:end] == [0xff, 0xd9] || @warn "Premature end of JPEG byte sequence."
+    return true
 end
