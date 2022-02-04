@@ -83,8 +83,21 @@ filename = testimage("earth", download_only=true)
 @btime jpeg_decode(Gray, filename; scale_ratio=0.25); # 63.119 ms (6 allocations: 1.08 MiB)
 ```
 
+## Acknowledgements
+
+The purpose of this project is to replace [ImageMagick.jl] with [ImageIO]. Steven G. Johnson first
+initialized an early draft version [JpegTurbo.jl](https://github.com/stevengj/JpegTurbo.jl), this
+package steals the name from him :). [Clang.jl] is used to generate the low-level ccall wrapper.
+[Yupei Qi], the current maintainer of Clang.jl, has generously help me debugging C-related codes.
+This package won't work at all without his help. My another prior project [Sixel.jl] was also under
+his generous guidance.
+
 [libjpeg-turbo]: https://github.com/libjpeg-turbo/libjpeg-turbo
+[Clang.jl]: https://github.com/JuliaInterop/Clang.jl
 [FileIO]: https://github.com/JuliaIO/FileIO.jl
 [ImageIO]: https://github.com/JuliaIO/ImageIO.jl
 [Images.jl]: https://github.com/JuliaImages/Images.jl
 [JuliaImages]: https://juliaimages.org/
+[ImageMagick.jl]: https://github.com/JuliaIO/ImageMagick.jl
+[Sixel.jl]: https://github.com/johnnychen94/Sixel.jl
+[Yupei Qi]: https://github.com/Gnimuc
