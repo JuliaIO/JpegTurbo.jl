@@ -6,6 +6,7 @@ using Documenter
 using TestImages
 using ImageQualityIndexes
 using ImageCore
+using Suppressor
 
 # ensure TestImages artifacts are downloaded before running documenter test
 testimage("cameraman")

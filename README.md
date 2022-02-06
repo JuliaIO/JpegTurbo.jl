@@ -83,6 +83,15 @@ filename = testimage("earth", download_only=true)
 @btime jpeg_decode(Gray, filename; scale_ratio=0.25); # 63.119 ms (6 allocations: 1.08 MiB)
 ```
 
+An exclusive alternative to `scale_ratio` is `preferred_size`:
+
+```julia
+# minimal `scale_ratio` that output size is greater than or equal to (512, 512)
+jpeg_decode(filename; preferred_size=(512, 512)) # size: (751, 750)
+# minimal `scale_ratio` that output size is less than or equal to (512, 512)
+jpeg_decode(filename; preferred_size=(<=, (512, 512))) # size: (376, 375)
+```
+
 ## Acknowledgements
 
 The purpose of this project is to replace [ImageMagick.jl] with [ImageIO]. Steven G. Johnson first
