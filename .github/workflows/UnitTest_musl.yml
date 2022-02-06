@@ -1,0 +1,36 @@
+name: UnitTest (musl)
+on:
+  push:
+    branches:
+      - master
+    tags: '*'
+  pull_request:
+concurrency:
+  # Skip intermediate builds: always.
+  # Cancel intermediate builds: only if it is a pull request build.
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ startsWith(github.ref, 'refs/pull/') }}
+jobs:
+ test_musl:
+    runs-on: ubuntu-latest
+    name: Julia 1 - ${{ matrix.os }} (musl) - ${{ matrix.arch }} - ${{ github.event_name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        sys: [linux-musl]
+        version: [1]
+    steps:
+      - uses: actions/checkout@v2
+      - name: Add symlink dir to PATH
+        run: echo "$HOME/.local/bin" >> $GITHUB_PATH
+      - name: Set up Python
+        uses: actions/setup-python@v2
+      - name: Set up Julia
+        run: |
+          pip install jill
+          jill install ${{ matrix.version }} --confirm
+          julia --project=. -e 'using InteractiveUtils; versioninfo()'
+          julia --project=. --color=yes -e 'using Pkg; Pkg.instantiate()'
+      - name: Test julia
+        run: |
+          julia --project=. --color=yes -e 'using Pkg; Pkg.test()'
