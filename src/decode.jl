@@ -115,6 +115,7 @@ function jpeg_decode(::Type{CT}, filename::AbstractString; kwargs...) where CT<:
         jpeg_decode(CT, io; kwargs...)
     end
 end
+jpeg_decode(filename::AbstractString; kwargs...) = jpeg_decode(read(filename); kwargs...)
 
 jpeg_decode(io::IO; kwargs...) = jpeg_decode(read(io); kwargs...)
 jpeg_decode(::Type{CT}, io::IO; kwargs...) where CT<:Colorant = jpeg_decode(CT, read(io); kwargs...)
@@ -172,25 +173,6 @@ function _cal_scale_ratio(::Nothing, preferred_size::Tuple, cinfo)
         end
     end
     return _allowed_scale_ratios[idx]
-end
-
-function _default_out_color_space(filename::AbstractString)
-    _jpeg_check_bytes(filename)
-    infile = ccall(:fopen, Libc.FILE, (Cstring, Cstring), filename, "rb")
-    @assert infile.ptr != C_NULL
-    cinfo_ref = Ref(LibJpeg.jpeg_decompress_struct())
-    jerr = Ref{LibJpeg.jpeg_error_mgr}()
-    try
-        cinfo_ref[].err = LibJpeg.jpeg_std_error(jerr)
-        LibJpeg.jpeg_create_decompress(cinfo_ref)
-        LibJpeg.jpeg_stdio_src(cinfo_ref, infile)
-        LibJpeg.jpeg_read_header(cinfo_ref, true)
-        LibJpeg.jpeg_calc_output_dimensions(cinfo_ref)
-        return jpeg_color_space(cinfo_ref[].out_color_space)
-    finally
-        LibJpeg.jpeg_destroy_decompress(cinfo_ref)
-        ccall(:fclose, Cint, (Ptr{Libc.FILE},), infile)
-    end
 end
 
 function _default_out_color_space(data::Vector{UInt8})
