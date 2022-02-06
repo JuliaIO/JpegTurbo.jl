@@ -33,7 +33,7 @@ end
         1   => 24.63,
         10  => 31.34,
         50  => 38.87,
-        100 => 59.31,
+        100 => 56.74,
     ]
     for (q, r) in psnr_refs
         v = assess_psnr(img, jpeg_decode(jpeg_encode(img, quality=q)))

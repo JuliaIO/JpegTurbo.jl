@@ -4,7 +4,6 @@ using Test
 using Aqua
 using Documenter
 using TestImages
-using ImageQualityIndexes
 using ImageCore
 using Suppressor
 
@@ -13,6 +12,7 @@ testimage("cameraman")
 
 const tmpdir = tempdir()
 
+include("testutils.jl")
 @testset "JpegTurbo.jl" begin
     if !Sys.iswindows() # DEBUG
         @testset "Project meta quality checks" begin
