@@ -86,6 +86,6 @@ An exclusive alternative to `scale_ratio` is `preferred_size`:
 ```julia
 # minimal `scale_ratio` that output size is greater than or equal to (512, 512)
 jpeg_decode(filename; preferred_size=(512, 512)) # size: (751, 750)
-# minimal `scale_ratio` that output size is less than or equal to (512, 512)
+# maximal `scale_ratio` that output size is less than or equal to (512, 512)
 jpeg_decode(filename; preferred_size=(<=, (512, 512))) # size: (376, 375)
 ```
