@@ -10,7 +10,7 @@ using Suppressor
 # ensure TestImages artifacts are downloaded before running documenter test
 testimage("cameraman")
 
-const tmpdir = tempdir()
+const tmpdir = mktempdir()
 
 include("testutils.jl")
 @testset "JpegTurbo.jl" begin

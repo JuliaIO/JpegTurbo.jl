@@ -14,7 +14,7 @@
 
     @testset "jpeg_decode" begin
         out = [similar(img) for _ in 1:Threads.nthreads()]
-        tmpdir = tempdir()
+        tmpdir = mktempdir()
 
         for i in 1:Threads.nthreads()
             jpeg_encode(joinpath(tmpdir, "$i.jpg"), img)
