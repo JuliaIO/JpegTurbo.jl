@@ -2,8 +2,14 @@
 
 [![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://johnnychen94.github.io/JpegTurbo.jl/stable)
 [![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://johnnychen94.github.io/JpegTurbo.jl/dev)
-[![Build Status](https://github.com/johnnychen94/JpegTurbo.jl/actions/workflows/UnitTest.yml/badge.svg?branch=master)](https://github.com/johnnychen94/JpegTurbo.jl/actions/workflows/UnitTest.yml?query=branch%3Amaster)
 [![Coverage](https://codecov.io/gh/johnnychen94/JpegTurbo.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/johnnychen94/JpegTurbo.jl)
+
+| **Platform**                               | **Build Status**                                         |
+|:------------------------------------------:|:--------------------------------------------------------:|
+| Linux x86/x64 && MacOS x64 && Windows x64  | [![Github Action][github-action-img]][github-action-url] |
+| Linux aarch64                              | [![Github Action][github-action-aarch-img]][github-action-aarch-url] |
+| Linux musl                                 | [![Github Action][github-action-musl-img]][github-action-musl-url] |
+| FreeBSD x86_64                             | [![Cirrus][cirrus-img]][cirrus-url]                      |
 
 JpegTurbo.jl is a Julia wrapper of the C library [libjpeg-turbo] that provides IO support for
 the JPEG image format. This package also backs the JPEG IO part of [ImageIO] and [FileIO].
@@ -110,3 +116,12 @@ his generous guidance.
 [ImageMagick.jl]: https://github.com/JuliaIO/ImageMagick.jl
 [Sixel.jl]: https://github.com/johnnychen94/Sixel.jl
 [Yupei Qi]: https://github.com/Gnimuc
+
+[github-action-img]: https://github.com/johnnychen94/JpegTurbo.jl/actions/workflows/UnitTest.yml/badge.svg
+[github-action-url]: https://github.com/johnnychen94/JpegTurbo.jl/actions/workflows/UnitTest.yml
+[github-action-aarch-img]: https://github.com/johnnychen94/JpegTurbo.jl/actions/workflows/UnitTest_aarch.yml/badge.svg
+[github-action-aarch-url]: https://github.com/johnnychen94/JpegTurbo.jl/actions/workflows/UnitTest_aarch.yml
+[github-action-musl-img]: https://github.com/johnnychen94/JpegTurbo.jl/actions/workflows/UnitTest_musl.yml/badge.svg
+[github-action-musl-url]: https://github.com/johnnychen94/JpegTurbo.jl/actions/workflows/UnitTest_musl.yml
+[cirrus-img]: https://api.cirrus-ci.com/github/johnnychen94/JpegTurbo.jl.svg
+[cirrus-url]: https://cirrus-ci.com/github/johnnychen94/JpegTurbo.jl

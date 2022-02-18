@@ -1,0 +1,33 @@
+name: UnitTest (aarch)
+on:
+  push:
+    branches:
+      - master
+    tags: '*'
+  pull_request:
+concurrency:
+  # Skip intermediate builds: always.
+  # Cancel intermediate builds: only if it is a pull request build.
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ startsWith(github.ref, 'refs/pull/') }}
+jobs:
+ test_aarch:
+    runs-on: ubuntu-latest
+    name: Julia 1 - ${{ matrix.os }} - ${{ matrix.arch }} - ${{ github.event_name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: aarch64
+            os: ubuntu20.04
+    steps:
+      - uses: actions/checkout@v2
+      - uses: uraimo/run-on-arch-action@v2
+        with:
+          arch: ${{ matrix.arch }}
+          distro: ${{ matrix.os }}
+          run: |
+            pip3 install jill
+            jill install --confirm
+            julia --project=. --color=yes -e 'using Pkg; Pkg.instantiate()'
+            julia --project=. --color=yes -e 'using Pkg; Pkg.test()'
