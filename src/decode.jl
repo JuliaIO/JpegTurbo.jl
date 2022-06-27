@@ -57,11 +57,12 @@ filename = testimage("earth", download_only=true)
 """
 function jpeg_decode(
         ::Type{CT},
+        table::Union{Nothing,Vector{UInt8}},
         data::Vector{UInt8};
         transpose=false,
         scale_ratio::Union{Nothing,Real}=nothing,
         preferred_size::Union{Nothing,Tuple}=nothing) where CT<:Colorant
-    _jpeg_check_bytes(data)
+    _jpeg_check_bytes(table, data)
     out_CT, jpeg_cls = _jpeg_out_color_space(CT)
 
     cinfo_ref = Ref(LibJpeg.jpeg_decompress_struct())
@@ -70,8 +71,19 @@ function jpeg_decode(
         cinfo = cinfo_ref[]
         cinfo.err = LibJpeg.jpeg_std_error(jerr)
         LibJpeg.jpeg_create_decompress(cinfo_ref)
+        if !(isnothing(table) || isempty(table))
+            # if abbreviated table is provided, read it first
+            LibJpeg.jpeg_mem_src(cinfo_ref, table, length(table))
+            v = LibJpeg.jpeg_read_header(cinfo_ref, false)
+            if v != LibJpeg.JPEG_HEADER_TABLES_ONLY
+                @warn "expected a header-only JPEG data stream" v
+            end
+        end
         LibJpeg.jpeg_mem_src(cinfo_ref, data, length(data))
-        LibJpeg.jpeg_read_header(cinfo_ref, true)
+        v = LibJpeg.jpeg_read_header(cinfo_ref, true)
+        if v != LibJpeg.JPEG_HEADER_OK
+            error("expected a valid JPEG data stream")
+        end
 
         # set decompression parameters, if given
         if !isnothing(preferred_size) && !transpose
@@ -106,19 +118,31 @@ function jpeg_decode(
         LibJpeg.jpeg_destroy_decompress(cinfo_ref)
     end
 end
-jpeg_decode(data; kwargs...) = jpeg_decode(_default_out_color_space(data), data; kwargs...)
+jpeg_decode(::Type{CT}, data::Vector{UInt8}; kwargs...) where CT = jpeg_decode(CT, nothing, data; kwargs...)
+
+jpeg_decode(table, data; kwargs...) = jpeg_decode(_default_out_color_space(table, data), data; kwargs...)
+jpeg_decode(data; kwargs...) = jpeg_decode(nothing, data; kwargs...)
 
 # TODO(johnnychen94): support Progressive JPEG
 # TODO(johnnychen94): support partial decoding
-function jpeg_decode(::Type{CT}, filename::AbstractString; kwargs...) where CT<:Colorant
-    open(filename, "r") do io
-        jpeg_decode(CT, io; kwargs...)
-    end
+function jpeg_decode(::Type{CT}, table_file::AbstractString, data_file::AbstractString; kwargs...) where CT<:Colorant
+    jpeg_decode(CT, read(table_file), read(data_file); kwargs...)
 end
-jpeg_decode(filename::AbstractString; kwargs...) = jpeg_decode(read(filename); kwargs...)
+function jpeg_decode(::Type{CT}, filename::AbstractString; kwargs...) where CT<:Colorant
+    jpeg_decode(CT, nothing, read(filename); kwargs...)
+end
+function jpeg_decode(table_file::AbstractString, data_file::AbstractString; kwargs...)
+    jpeg_decode(read(table_file), read(filename); kwargs...)
+end
+jpeg_decode(filename::AbstractString; kwargs...) = jpeg_decode(nothing, read(filename); kwargs...)
 
-jpeg_decode(io::IO; kwargs...) = jpeg_decode(read(io); kwargs...)
-jpeg_decode(::Type{CT}, io::IO; kwargs...) where CT<:Colorant = jpeg_decode(CT, read(io); kwargs...)
+jpeg_decode(table_io::IO, data_io::IO; kwargs...) = jpeg_decode(read(table_io), read(data_io); kwargs...)
+jpeg_decode(io::IO; kwargs...) = jpeg_decode(nothing, read(io); kwargs...)
+
+function jpeg_decode(::Type{CT}, table_io::IO, data_io::IO; kwargs...) where CT<:Colorant
+    jpeg_decode(CT, read(table_io), read(data_io); kwargs...)
+end
+jpeg_decode(::Type{CT}, io::IO; kwargs...) where CT<:Colorant = jpeg_decode(CT, nothing, read(io); kwargs...)
 
 function _jpeg_decode!(out::Matrix{<:Colorant}, cinfo_ref::Ref{LibJpeg.jpeg_decompress_struct})
     row_stride = size(out, 1) * length(eltype(out))
@@ -175,13 +199,18 @@ function _cal_scale_ratio(::Nothing, preferred_size::Tuple, cinfo)
     return _allowed_scale_ratios[idx]
 end
 
-function _default_out_color_space(data::Vector{UInt8})
-    _jpeg_check_bytes(data)
+function _default_out_color_space(table, data::Vector{UInt8})
+    _jpeg_check_bytes(table, data)
     cinfo_ref = Ref(LibJpeg.jpeg_decompress_struct())
     try
         jerr = Ref{LibJpeg.jpeg_error_mgr}()
         cinfo_ref[].err = LibJpeg.jpeg_std_error(jerr)
         LibJpeg.jpeg_create_decompress(cinfo_ref)
+        if !(isnothing(table) || isempty(table))
+            # if abbreviated table is provided, read it first
+            LibJpeg.jpeg_mem_src(cinfo_ref, table, length(table))
+            LibJpeg.jpeg_read_header(cinfo_ref, false)
+        end
         LibJpeg.jpeg_mem_src(cinfo_ref, data, length(data))
         LibJpeg.jpeg_read_header(cinfo_ref, true)
         LibJpeg.jpeg_calc_output_dimensions(cinfo_ref)
@@ -202,8 +231,8 @@ end
 
 # provides some basic integrity check
 # TODO(johnnychen94): redirect libjpeg-turbo error to julia
-_jpeg_check_bytes(filename::AbstractString) = open(_jpeg_check_bytes, filename, "r")
-function _jpeg_check_bytes(io::IO)
+_jpeg_check_bytes(filename::AbstractString; kwargs...) = open(_jpeg_check_bytes, filename, "r")
+function _jpeg_check_bytes(io::IO; kwargs...)
     seekend(io)
     nbytes = position(io)
     nbytes > 623 || throw(ArgumentError("Invalid number of bytes."))
@@ -215,9 +244,14 @@ function _jpeg_check_bytes(io::IO)
     append!(buf, read(io, 2))
     return _jpeg_check_bytes(buf)
 end
-function _jpeg_check_bytes(data::Vector{UInt8})
-    length(data) > 623 || throw(ArgumentError("Invalid number of bytes."))
+function _jpeg_check_bytes(data::Vector{UInt8}; check_length=true)
+    check_length && (length(data) > 623 || throw(ArgumentError("Invalid number of bytes.")))
     data[1:2] == [0xff, 0xd8] || throw(ArgumentError("Invalid JPEG byte sequence."))
     data[end-1:end] == [0xff, 0xd9] || @warn "Premature end of JPEG byte sequence."
     return true
+end
+_jpeg_check_bytes(::Nothing; kwargs...) = true
+function _jpeg_check_bytes(table, data)
+    _jpeg_check_bytes(table; check_length=false)
+    _jpeg_check_bytes(data; check_length=true)
 end
