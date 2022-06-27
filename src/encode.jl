@@ -76,54 +76,56 @@ function _encode(
     Y_density::Union{Nothing,Int} = nothing,
     write_Adobe_marker::Union{Nothing,Bool} = nothing
 )
-    cinfo = LibJpeg.jpeg_compress_struct()
-    cinfo_ref = Ref(cinfo)
-    jerr = Ref{LibJpeg.jpeg_error_mgr}()
-    cinfo.err = LibJpeg.jpeg_std_error(jerr)
-    LibJpeg.jpeg_create_compress(cinfo_ref)
+    cinfo_ref = Ref(LibJpeg.jpeg_compress_struct())
+    cinfo = cinfo_ref[]
+    try
+        jerr = Ref{LibJpeg.jpeg_error_mgr}()
+        cinfo.err = LibJpeg.jpeg_std_error(jerr)
+        LibJpeg.jpeg_create_compress(cinfo_ref)
 
-    # set input image information
-    cinfo.image_width = size(img, 1)
-    cinfo.image_height = size(img, 2)
-    cinfo.input_components = jpeg_components(img)
-    cinfo.in_color_space = jpeg_color_space(img)
+        # set input image information
+        cinfo.image_width = size(img, 1)
+        cinfo.image_height = size(img, 2)
+        cinfo.input_components = jpeg_components(img)
+        cinfo.in_color_space = jpeg_color_space(img)
 
-    # set compression keywords
-    # it's recommended to call `jpeg_set_defaults` first before setting custom parameters
-    # as it's more likely to provide a working parameters and is more likely to be working
-    # correctly in the future.
-    LibJpeg.jpeg_set_defaults(cinfo_ref)
-    isnothing(colorspace) || LibJpeg.jpeg_set_colorspace(cinfo_ref, jpeg_color_space(colorspace))
-    isnothing(quality) || LibJpeg.jpeg_set_quality(cinfo_ref, quality, true)
-    isnothing(arith_code) || (cinfo.arith_code = arith_code)
-    isnothing(optimize_coding) || (cinfo.optimize_coding = optimize_coding)
-    isnothing(smoothing_factor) || (cinfo.smoothing_factor = smoothing_factor)
-    isnothing(write_JFIF_header) || (cinfo.write_JFIF_header = write_JFIF_header)
-    if !isnothing(JFIF_version)
-        cinfo.JFIF_major_version = UInt8(JFIF_version.major)
-        cinfo.JFIF_minor_version = UInt8(JFIF_version.minor)
+        # set compression keywords
+        # it's recommended to call `jpeg_set_defaults` first before setting custom parameters
+        # as it's more likely to provide a working parameters and is more likely to be working
+        # correctly in the future.
+        LibJpeg.jpeg_set_defaults(cinfo_ref)
+        isnothing(colorspace) || LibJpeg.jpeg_set_colorspace(cinfo_ref, jpeg_color_space(colorspace))
+        isnothing(quality) || LibJpeg.jpeg_set_quality(cinfo_ref, quality, true)
+        isnothing(arith_code) || (cinfo.arith_code = arith_code)
+        isnothing(optimize_coding) || (cinfo.optimize_coding = optimize_coding)
+        isnothing(smoothing_factor) || (cinfo.smoothing_factor = smoothing_factor)
+        isnothing(write_JFIF_header) || (cinfo.write_JFIF_header = write_JFIF_header)
+        if !isnothing(JFIF_version)
+            cinfo.JFIF_major_version = UInt8(JFIF_version.major)
+            cinfo.JFIF_minor_version = UInt8(JFIF_version.minor)
+        end
+        isnothing(density_unit) || (cinfo.density_unit = density_unit)
+        isnothing(X_density) || (cinfo.X_density = X_density)
+        isnothing(Y_density) || (cinfo.Y_density = Y_density)
+        isnothing(write_Adobe_marker) || (cinfo.write_Adobe_marker = write_Adobe_marker)
+
+        # set destination
+        # TODO(johnnychen94): allow pre-allocated buffer
+        bufsize = Ref{Culong}(0)
+        buf_ptr = Ref{Ptr{UInt8}}(C_NULL)
+        LibJpeg.jpeg_mem_dest(cinfo_ref, buf_ptr, bufsize)
+
+        # compression stage
+        LibJpeg.jpeg_start_compress(cinfo_ref, true)
+        row_stride = size(img, 1) * jpeg_components(img)
+        row_pointer = Ref{Ptr{UInt8}}(0)
+        while (cinfo.next_scanline < cinfo.image_height)
+            row_pointer[] = pointer(img) + cinfo.next_scanline * row_stride
+            LibJpeg.jpeg_write_scanlines(cinfo_ref, row_pointer, 1);
+        end
+        LibJpeg.jpeg_finish_compress(cinfo_ref)
+        return unsafe_wrap(Array, buf_ptr[], bufsize[]; own=true)
+    finally
+        LibJpeg.jpeg_destroy_compress(cinfo_ref)
     end
-    isnothing(density_unit) || (cinfo.density_unit = density_unit)
-    isnothing(X_density) || (cinfo.X_density = X_density)
-    isnothing(Y_density) || (cinfo.Y_density = Y_density)
-    isnothing(write_Adobe_marker) || (cinfo.write_Adobe_marker = write_Adobe_marker)
-
-    # set destination
-    # TODO(johnnychen94): allow pre-allocated buffer
-    bufsize = Ref{Culong}(0)
-    buf_ptr = Ref{Ptr{UInt8}}(C_NULL)
-    LibJpeg.jpeg_mem_dest(cinfo_ref, buf_ptr, bufsize)
-
-    # compression stage
-    LibJpeg.jpeg_start_compress(cinfo_ref, true)
-    row_stride = size(img, 1) * jpeg_components(img)
-    row_pointer = Ref{Ptr{UInt8}}(0)
-    while (cinfo.next_scanline < cinfo.image_height)
-        row_pointer[] = pointer(img) + cinfo.next_scanline * row_stride
-        LibJpeg.jpeg_write_scanlines(cinfo_ref, row_pointer, 1);
-    end
-    LibJpeg.jpeg_finish_compress(cinfo_ref)
-    LibJpeg.jpeg_destroy_compress(cinfo_ref)
-
-    return unsafe_wrap(Array, buf_ptr[], bufsize[]; own=true)
 end
