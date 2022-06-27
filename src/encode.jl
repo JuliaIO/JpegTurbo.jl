@@ -49,7 +49,8 @@ function jpeg_encode(img::AbstractMatrix{T}; transpose=false, kwargs...) where T
     # contiguous memeory layout already makes a transpose.
     img = transpose ? convert(AT, img) : convert(AT, PermutedDimsArray(img, (2, 1)))
 
-    return _encode(img; kwargs...)
+    table, data = _encode(img; kwargs...)
+    return isempty(table) ? data : (table, data) # for backward compatibility
 end
 
 function jpeg_encode(filename::AbstractString, img; kwargs...)
@@ -57,12 +58,27 @@ function jpeg_encode(filename::AbstractString, img; kwargs...)
         jpeg_encode(io, img; kwargs...)
     end
 end
+function jpeg_encode(table_file::AbstractString, data_file::AbstractString, img; kwargs...)
+    open(table_file, "w") do table_io
+        open(data_file, "w") do data_io
+            jpeg_encode(table_io, data_io, img; kwargs...)
+        end
+    end
+end
 # TODO(johnnychen94): further improve the performance via asynchronously IO and buffer reuse.
 jpeg_encode(io::IO, img; kwargs...) = write(io, jpeg_encode(img; kwargs...))
-
+function jpeg_encode(table_io::IO, data_io::IO, img; kwargs...)
+    table, data = jpeg_encode(img; separate_tables=true, kwargs...)
+    n = write(table_io, table)
+    n += write(data_io, data)
+    return n
+end
 
 function _encode(
     img::Matrix{<:Colorant};
+    separate_tables::Bool = false,
+    skip_tables::Bool = false,
+    skip_data::Bool = false,
     colorspace::Union{Nothing,Type} = nothing,
     # ImageMagick: "the default is to use the estimated quality of your input image if it can be determined, otherwise 92."
     quality::Union{Nothing,Int} = 92,
@@ -76,54 +92,92 @@ function _encode(
     Y_density::Union{Nothing,Int} = nothing,
     write_Adobe_marker::Union{Nothing,Bool} = nothing
 )
-    cinfo = LibJpeg.jpeg_compress_struct()
-    cinfo_ref = Ref(cinfo)
-    jerr = Ref{LibJpeg.jpeg_error_mgr}()
-    cinfo.err = LibJpeg.jpeg_std_error(jerr)
-    LibJpeg.jpeg_create_compress(cinfo_ref)
+    cinfo_ref = Ref(LibJpeg.jpeg_compress_struct())
+    cinfo = cinfo_ref[]
+    try
+        jerr = Ref{LibJpeg.jpeg_error_mgr}()
+        cinfo.err = LibJpeg.jpeg_std_error(jerr)
+        LibJpeg.jpeg_create_compress(cinfo_ref)
 
-    # set input image information
-    cinfo.image_width = size(img, 1)
-    cinfo.image_height = size(img, 2)
-    cinfo.input_components = jpeg_components(img)
-    cinfo.in_color_space = jpeg_color_space(img)
+        # set input image information
+        cinfo.image_width = size(img, 1)
+        cinfo.image_height = size(img, 2)
+        cinfo.input_components = jpeg_components(img)
+        cinfo.in_color_space = jpeg_color_space(img)
 
-    # set compression keywords
-    # it's recommended to call `jpeg_set_defaults` first before setting custom parameters
-    # as it's more likely to provide a working parameters and is more likely to be working
-    # correctly in the future.
-    LibJpeg.jpeg_set_defaults(cinfo_ref)
-    isnothing(colorspace) || LibJpeg.jpeg_set_colorspace(cinfo_ref, jpeg_color_space(colorspace))
-    isnothing(quality) || LibJpeg.jpeg_set_quality(cinfo_ref, quality, true)
-    isnothing(arith_code) || (cinfo.arith_code = arith_code)
-    isnothing(optimize_coding) || (cinfo.optimize_coding = optimize_coding)
-    isnothing(smoothing_factor) || (cinfo.smoothing_factor = smoothing_factor)
-    isnothing(write_JFIF_header) || (cinfo.write_JFIF_header = write_JFIF_header)
-    if !isnothing(JFIF_version)
-        cinfo.JFIF_major_version = UInt8(JFIF_version.major)
-        cinfo.JFIF_minor_version = UInt8(JFIF_version.minor)
+        # set compression keywords
+        # it's recommended to call `jpeg_set_defaults` first before setting custom parameters
+        # as it's more likely to provide a working parameters and is more likely to be working
+        # correctly in the future.
+        LibJpeg.jpeg_set_defaults(cinfo_ref)
+        isnothing(colorspace) || LibJpeg.jpeg_set_colorspace(cinfo_ref, jpeg_color_space(colorspace))
+        isnothing(quality) || LibJpeg.jpeg_set_quality(cinfo_ref, quality, true)
+        isnothing(arith_code) || (cinfo.arith_code = arith_code)
+        isnothing(optimize_coding) || (cinfo.optimize_coding = optimize_coding)
+        isnothing(smoothing_factor) || (cinfo.smoothing_factor = smoothing_factor)
+        isnothing(write_JFIF_header) || (cinfo.write_JFIF_header = write_JFIF_header)
+        if !isnothing(JFIF_version)
+            cinfo.JFIF_major_version = UInt8(JFIF_version.major)
+            cinfo.JFIF_minor_version = UInt8(JFIF_version.minor)
+        end
+        isnothing(density_unit) || (cinfo.density_unit = density_unit)
+        isnothing(X_density) || (cinfo.X_density = X_density)
+        isnothing(Y_density) || (cinfo.Y_density = Y_density)
+        isnothing(write_Adobe_marker) || (cinfo.write_Adobe_marker = write_Adobe_marker)
+
+        if separate_tables
+            # ref: "Abbreviated datastreams and multiple images" section in libjpeg-turbo API Documentation
+            skip_tables && skip_data && error("`separate_tables` is set, but `skip_tables` or `skip_data` is not set.")
+            if skip_tables
+                table_buf = UInt8[]
+            else
+                bufsize = Ref{Culong}(0)
+                table_buf_ptr = Ref{Ptr{UInt8}}(C_NULL)
+                LibJpeg.jpeg_mem_dest(cinfo_ref, table_buf_ptr, bufsize)
+                LibJpeg.jpeg_write_tables(cinfo_ref)
+                table_buf = unsafe_wrap(Array, table_buf_ptr[], bufsize[]; own=true)
+            end
+
+            if skip_data
+                data_buf = UInt8[]
+            else
+                bufsize = Ref{Culong}(0)
+                data_buf_ptr = Ref{Ptr{UInt8}}(C_NULL)
+                LibJpeg.jpeg_mem_dest(cinfo_ref, data_buf_ptr, bufsize)
+                LibJpeg.jpeg_start_compress(cinfo_ref, true)
+                row_stride = size(img, 1) * jpeg_components(img)
+                row_pointer = Ref{Ptr{UInt8}}(0)
+                while (cinfo.next_scanline < cinfo.image_height)
+                    row_pointer[] = pointer(img) + cinfo.next_scanline * row_stride
+                    LibJpeg.jpeg_write_scanlines(cinfo_ref, row_pointer, 1);
+                end
+                LibJpeg.jpeg_finish_compress(cinfo_ref)
+                data_buf = unsafe_wrap(Array, data_buf_ptr[], bufsize[]; own=true)
+            end
+
+            return table_buf, data_buf
+        else
+            if skip_tables || skip_data
+                @warn "`skip_tables` and `skip_data` are not used when `separate_tables` is not set."
+            end
+            # set destination
+            # TODO(johnnychen94): allow pre-allocated buffer
+            bufsize = Ref{Culong}(0)
+            buf_ptr = Ref{Ptr{UInt8}}(C_NULL)
+            LibJpeg.jpeg_mem_dest(cinfo_ref, buf_ptr, bufsize)
+
+            # compression stage
+            LibJpeg.jpeg_start_compress(cinfo_ref, true)
+            row_stride = size(img, 1) * jpeg_components(img)
+            row_pointer = Ref{Ptr{UInt8}}(0)
+            while (cinfo.next_scanline < cinfo.image_height)
+                row_pointer[] = pointer(img) + cinfo.next_scanline * row_stride
+                LibJpeg.jpeg_write_scanlines(cinfo_ref, row_pointer, 1);
+            end
+            LibJpeg.jpeg_finish_compress(cinfo_ref)
+            return UInt8[], unsafe_wrap(Array, buf_ptr[], bufsize[]; own=true)
+        end
+    finally
+        LibJpeg.jpeg_destroy_compress(cinfo_ref)
     end
-    isnothing(density_unit) || (cinfo.density_unit = density_unit)
-    isnothing(X_density) || (cinfo.X_density = X_density)
-    isnothing(Y_density) || (cinfo.Y_density = Y_density)
-    isnothing(write_Adobe_marker) || (cinfo.write_Adobe_marker = write_Adobe_marker)
-
-    # set destination
-    # TODO(johnnychen94): allow pre-allocated buffer
-    bufsize = Ref{Culong}(0)
-    buf_ptr = Ref{Ptr{UInt8}}(C_NULL)
-    LibJpeg.jpeg_mem_dest(cinfo_ref, buf_ptr, bufsize)
-
-    # compression stage
-    LibJpeg.jpeg_start_compress(cinfo_ref, true)
-    row_stride = size(img, 1) * jpeg_components(img)
-    row_pointer = Ref{Ptr{UInt8}}(0)
-    while (cinfo.next_scanline < cinfo.image_height)
-        row_pointer[] = pointer(img) + cinfo.next_scanline * row_stride
-        LibJpeg.jpeg_write_scanlines(cinfo_ref, row_pointer, 1);
-    end
-    LibJpeg.jpeg_finish_compress(cinfo_ref)
-    LibJpeg.jpeg_destroy_compress(cinfo_ref)
-
-    return unsafe_wrap(Array, buf_ptr[], bufsize[]; own=true)
 end
