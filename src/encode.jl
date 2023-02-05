@@ -76,6 +76,10 @@ function _encode(
     Y_density::Union{Nothing,Int} = nothing,
     write_Adobe_marker::Union{Nothing,Bool} = nothing
 )
+    if prod(size(img)) == 0
+        throw(ArgumentError("empty image is not allowed"))
+    end
+
     cinfo = LibJpeg.jpeg_compress_struct()
     cinfo_ref = Ref(cinfo)
     jerr = Ref{LibJpeg.jpeg_error_mgr}()

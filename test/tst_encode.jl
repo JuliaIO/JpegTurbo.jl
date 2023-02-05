@@ -24,6 +24,8 @@ img_rgb = testimage("lighthouse")
     img_or = 1.5 .* img
     img_or[1] = Gray(NaN)
     @test jpeg_encode(img_or) == jpeg_encode(Float64.(img_or)) == jpeg_encode(clamp01nan!(img_or))
+
+    @test_throws ArgumentError("empty image is not allowed") jpeg_encode(Array{Float64,2}(undef, 0, 0))
 end
 
 # keyword checks
