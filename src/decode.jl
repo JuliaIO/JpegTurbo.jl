@@ -122,16 +122,15 @@ jpeg_decode(::Type{CT}, io::IO; kwargs...) where CT<:Colorant = jpeg_decode(CT, 
 
 function _jpeg_decode!(out::Matrix{<:Colorant}, cinfo_ref::Ref{LibJpeg.jpeg_decompress_struct})
     row_stride = size(out, 1) * length(eltype(out))
-    buf = Vector{UInt8}(undef, row_stride)
-    buf_ref = Ref(pointer(buf))
-    out_uint8 = reinterpret(UInt8, out)
+
+    # get a pointer to `out` as if it's a UInt8 array
+    out_ptr_ref = Ref(Ptr{UInt8}(pointer(out)))
 
     cinfo = cinfo_ref[]
     LibJpeg.jpeg_start_decompress(cinfo_ref)
     while cinfo.output_scanline < cinfo.output_height
-        # TODO(johnnychen94): try if we can directly write to `out` without using `buf`
-        GC.@preserve buf LibJpeg.jpeg_read_scanlines(cinfo_ref, buf_ref, 1)
-        copyto!(out_uint8, (cinfo.output_scanline-1) * row_stride + 1, buf, 1, row_stride)
+        GC.@preserve out LibJpeg.jpeg_read_scanlines(cinfo_ref, out_ptr_ref, 1)
+        out_ptr_ref[] += row_stride # move the pointer one row
     end
     LibJpeg.jpeg_finish_decompress(cinfo_ref)
 
