@@ -16,6 +16,6 @@ makedocs(;
 )
 
 deploydocs(;
-    repo="github.com/johnnychen94/JpegTurbo.jl",
+    repo="github.com/JuliaIO/JpegTurbo.jl",
     devbranch="master",
 )
