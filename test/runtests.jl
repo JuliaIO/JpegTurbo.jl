@@ -21,7 +21,6 @@ include("testutils.jl")
                 project_extras=true,
                 deps_compat=true,
                 stale_deps=true,
-                project_toml_formatting=true
             )
             doctest(JpegTurbo, manual = false)
         end
