@@ -10,6 +10,8 @@ using Suppressor
 # ensure TestImages artifacts are downloaded before running documenter test
 testimage("cameraman")
 
+DocMeta.setdocmeta!(JpegTurbo, :DocTestSetup, :(using JpegTurbo); recursive=true)
+
 const tmpdir = mktempdir()
 
 include("testutils.jl")
