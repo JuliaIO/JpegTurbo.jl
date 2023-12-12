@@ -4,6 +4,9 @@ using ImageCore, TestImages
 
 DocMeta.setdocmeta!(JpegTurbo, :DocTestSetup, :(using JpegTurbo); recursive=true)
 
+# ensure TestImages artifacts are downloaded before running documenter test
+img = testimage("cameraman");
+
 format = Documenter.HTML(
     prettyurls = get(ENV, "CI", nothing) == "true"
 )
