@@ -24,7 +24,7 @@ Decode the JPEG image as colorant matrix. The source data can be either a filena
 # Examples
 
 ```jldoctest
-julia> using JpegTurbo, TestImages, ImageCore
+julia> using TestImages, ImageCore
 
 julia> filename = testimage("earth", download_only=true);
 
