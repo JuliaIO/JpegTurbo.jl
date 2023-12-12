@@ -13,6 +13,7 @@ makedocs(;
         "Home" => "index.md",
         "Reference" => "reference.md",
     ],
+    doctest=false, # doctest are run in unit test
 )
 
 deploydocs(;
