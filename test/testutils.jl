@@ -16,3 +16,14 @@ function _mse(x, y)
     _euclidean(x, y)/(length(x))
 end
 _euclidean(x, y) = sqrt(sum((x - y) .^ 2))
+
+function is_progressive_jpeg(bytes::AbstractVector{UInt8})
+    for i ∈ eachindex(bytes)
+        if i < lastindex(bytes)
+            # Progressive JPEG found
+            bytes[i] == 0xFF && bytes[i+1] == 0xC2 && return true  
+        end
+    end
+    return false # No SOF2 marker found, probably baseline
+end
+is_progressive_jpeg(filename::AbstractString) = is_progressive_jpeg(read(filename))

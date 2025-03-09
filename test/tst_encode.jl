@@ -43,4 +43,26 @@ end
     end
 end
 
+@testset "progressive" begin
+    tmpfile = joinpath(tmpdir, "tmp.jpg")
+    img = testimage("cameraman")
+    progressive_modes = [nothing, false, true]
+    for progressive_mode ∈ progressive_modes
+        bytes = if isnothing(progressive_mode)
+            JpegTurbo.jpeg_encode(tmpfile, img)
+            jpeg_encode(img)
+        else
+            JpegTurbo.jpeg_encode(tmpfile, img; progressive_mode=progressive_mode)
+            jpeg_encode(img; progressive_mode=progressive_mode)
+        end
+        if progressive_mode ∈ [nothing, false]
+            @test is_progressive_jpeg(tmpfile) == false
+            @test is_progressive_jpeg(bytes) == false
+        else
+            @test is_progressive_jpeg(tmpfile) == true
+            @test is_progressive_jpeg(bytes) == true
+        end
+    end
+end
+
 end # @testset "jpeg_encode"
