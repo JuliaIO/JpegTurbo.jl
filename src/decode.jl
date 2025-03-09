@@ -29,10 +29,10 @@ julia> using JpegTurbo, TestImages, ImageCore
 julia> filename = testimage("earth", download_only=true);
 
 julia> img = jpeg_decode(filename); summary(img)
-"3002×3000 Array{RGB{N0f8},2} with eltype RGB{N0f8}"
+"3002×3000 Matrix{RGB{N0f8}}"
 
 julia> img = jpeg_decode(Gray, filename; scale_ratio=0.25); summary(img)
-"751×750 Array{Gray{N0f8},2} with eltype Gray{N0f8}"
+"751×750 Matrix{Gray{N0f8}}"
 ```
 
 For image preview and similar purposes, `T` and `scale_ratio` are useful parameters to
