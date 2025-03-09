@@ -74,7 +74,8 @@ function _encode(
     density_unit::Union{Nothing,Int} = nothing,
     X_density::Union{Nothing,Int} = nothing,
     Y_density::Union{Nothing,Int} = nothing,
-    write_Adobe_marker::Union{Nothing,Bool} = nothing
+    write_Adobe_marker::Union{Nothing,Bool} = nothing,
+    progressive_mode::Union{Nothing,Bool} = nothing
 )
     if prod(size(img)) == 0
         throw(ArgumentError("empty image is not allowed"))
@@ -111,6 +112,10 @@ function _encode(
     isnothing(X_density) || (cinfo.X_density = X_density)
     isnothing(Y_density) || (cinfo.Y_density = Y_density)
     isnothing(write_Adobe_marker) || (cinfo.write_Adobe_marker = write_Adobe_marker)
+    if !isnothing(progressive_mode) && progressive_mode
+      cinfo.progressive_mode = true
+      LibJpeg.jpeg_simple_progression(cinfo_ref)
+    end
 
     # set destination
     # TODO(johnnychen94): allow pre-allocated buffer
