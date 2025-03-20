@@ -25,7 +25,7 @@ in memory as return value.
 # Examples
 
 ```jldoctest
-julia> using JpegTurbo, TestImages
+julia> using TestImages
 
 julia> img = testimage("cameraman");
 

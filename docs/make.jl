@@ -1,5 +1,11 @@
 using JpegTurbo
 using Documenter
+using ImageCore, TestImages
+
+DocMeta.setdocmeta!(JpegTurbo, :DocTestSetup, :(using JpegTurbo); recursive=true)
+
+# ensure TestImages artifacts are downloaded before running documenter test
+img = testimage("cameraman");
 
 format = Documenter.HTML(
     prettyurls = get(ENV, "CI", nothing) == "true"
@@ -13,7 +19,7 @@ makedocs(;
         "Home" => "index.md",
         "Reference" => "reference.md",
     ],
-    doctest=false, # doctest are run in unit test
+    doctest=true, # doctest are run in unit test
 )
 
 deploydocs(;
